@@ -29,6 +29,7 @@ static const int MASTERNODE_POSE_BAN_MAX_SCORE          = 5;
 
 // sentinel version before sentinel ping implementation
 #define DEFAULT_SENTINEL_VERSION 0x010001
+#define DEFAULT_DAEMON_VERSION 120202
 
 class CMasternodePing
 {
@@ -40,6 +41,7 @@ public:
     bool fSentinelIsCurrent = false; // true if last sentinel ping was actual
     // MSB is always 0, other 3 bits corresponds to x.x.x version scheme
     uint32_t nSentinelVersion{DEFAULT_SENTINEL_VERSION};
+    uint32_t nDaemonVersion{DEFAULT_DAEMON_VERSION};
 
     CMasternodePing() = default;
 
@@ -57,10 +59,11 @@ public:
         {
             fSentinelIsCurrent = false;
             nSentinelVersion = DEFAULT_SENTINEL_VERSION;
+            nDaemonVersion = DEFAULT_DAEMON_VERSION;
             return;
         }
         READWRITE(fSentinelIsCurrent);
-        READWRITE(nSentinelVersion);
+        READWRITE(nDaemonVersion);
     }
 
     uint256 GetHash() const
