@@ -126,6 +126,9 @@ public:
 
     /// Add an entry
     bool Add(CMasternode &mn);
+    // JINY BEGIN
+    bool Remove(COutPoint out);
+    // JINY END
 
     /// Ask (source) node for mnb
     void AskForMN(CNode *pnode, const COutPoint& outpoint, CConnman& connman);

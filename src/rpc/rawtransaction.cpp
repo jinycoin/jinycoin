@@ -126,7 +126,13 @@ static UniValue getrawtransaction(const JSONRPCRequest& request)
             "           \"address\"        (string) JinyCoin address\n"
             "           ,...\n"
             "         ]\n"
-            "       }\n"
+            // JINY BEGIN
+            //"       }\n"
+            "       }[,\n"
+            "       \"masternodeIP\" : \"ip\",    (string) masternode IP\n"
+            "       \"pubKeyMN\" : \"hex\"        (string) the masternode payee pubkey hex\n"
+            "       ]\n"
+            // JINY END
             "     }\n"
             "     ,...\n"
             "  ],\n"

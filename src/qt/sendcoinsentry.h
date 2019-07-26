@@ -56,8 +56,15 @@ Q_SIGNALS:
     void useAvailableBalance(SendCoinsEntry* entry);
     void payAmountChanged();
     void subtractFeeFromAmountChanged();
+    // JINY BEGIN
+    void startMasternodeChanged();
+    // JINY END
 
 private Q_SLOTS:
+    // JINY BEGIN
+    void collateralChanged();
+    void masternodeChanged();
+    // JINY END
     void deleteClicked();
     void useAvailableBalanceClicked();
     void on_payTo_textChanged(const QString &address);

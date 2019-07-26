@@ -228,6 +228,10 @@ struct CRecipient
     CScript scriptPubKey;
     CAmount nAmount;
     bool fSubtractFeeFromAmount;
+    // JINY BEGIN
+    std::string masternodeIP;
+    CPubKey pubKeyMN;
+    // JINY END
 };
 
 typedef std::map<std::string, std::string> mapValue_t;

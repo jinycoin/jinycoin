@@ -3316,8 +3316,12 @@ bool static ProcessMessage(CNode* pfrom, const std::string& strCommand, CDataStr
             privateSendClient.ProcessMessage(pfrom, strCommand, vRecv, *connman);
 #endif // ENABLE_WALLET
             privateSendServer.ProcessMessage(pfrom, strCommand, vRecv, *connman);
+            // JINY BEGIN
+            if (chainActive.Tip()->nHeight < 50000) {
             mnodeman.ProcessMessage(pfrom, strCommand, vRecv, *connman);
             mnpayments.ProcessMessage(pfrom, strCommand, vRecv, *connman);
+            }
+            // JINY END
             instantsend.ProcessMessage(pfrom, strCommand, vRecv, *connman);
             sporkManager.ProcessSpork(pfrom, strCommand, vRecv, *connman);
             masternodeSync.ProcessMessage(pfrom, strCommand, vRecv);

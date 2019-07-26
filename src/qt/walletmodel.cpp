@@ -179,7 +179,20 @@ WalletModel::SendCoinsReturn WalletModel::prepareTransaction(WalletModelTransact
             ++nAddresses;
 
             CScript scriptPubKey = GetScriptForDestination(DecodeDestination(rcp.address.toStdString()));
-            CRecipient recipient = {scriptPubKey, rcp.amount, rcp.fSubtractFeeFromAmount};
+            // JINY BEGIN
+            std::vector<std::shared_ptr<CWallet>> wallets = GetWallets();
+            CWallet* const pwallet = wallets[0].get();
+            CPubKey pubKeyMN;
+            CKey keyMN;
+            CKeyID keyIDMN = GetKeyForDestination(*pwallet, DecodeDestination(rcp.masternodePayee.toStdString()));
+            if (!keyIDMN.IsNull())
+            {
+                if (pwallet->GetKey(keyIDMN, keyMN))
+                    pubKeyMN = keyMN.GetPubKey();
+            }
+            //CRecipient recipient = {scriptPubKey, rcp.amount, rcp.fSubtractFeeFromAmount};
+            CRecipient recipient = {scriptPubKey, rcp.amount, rcp.fSubtractFeeFromAmount, rcp.masternodeIP.toStdString(), pubKeyMN};
+            // JINY END
             vecSend.push_back(recipient);
 
             total += rcp.amount;

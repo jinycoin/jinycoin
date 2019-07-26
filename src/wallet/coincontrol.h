@@ -38,6 +38,11 @@ public:
     bool m_avoid_partial_spends;
     //! Fee estimation mode to control arguments to estimateSmartFee
     FeeEstimateMode m_fee_mode;
+    // JINY BEGIN
+    //! Flag collateral to start masternode
+    boost::optional<std::string> m_signal_masternode_ip;
+    boost::optional<CTxDestination> m_signal_masternode_payee;
+    // JINY END
 
     // Dash
     CAmount nMinimumTotalFee;

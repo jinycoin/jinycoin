@@ -59,9 +59,22 @@ CTxOut::CTxOut(const CAmount& nValueIn, CScript scriptPubKeyIn)
     nRounds = -10;
 }
 
+// JINY BEGIN
+CTxOut::CTxOut(const CAmount& nValueIn, CScript scriptPubKeyIn, std::string masternodeIPIn, CPubKey pubKeyMNIn)
+{
+    nValue = nValueIn;
+    scriptPubKey = scriptPubKeyIn;
+    masternodeIP = masternodeIPIn;
+    pubKeyMN = pubKeyMNIn;
+    nRounds = -10;
+}
+// JINY END
+
 std::string CTxOut::ToString() const
 {
-    return strprintf("CTxOut(nValue=%d.%08d, scriptPubKey=%s)", nValue / COIN, nValue % COIN, HexStr(scriptPubKey).substr(0, 30));
+    // JINY BEGIN
+    return strprintf("CTxOut(nValue=%d.%08d, scriptPubKey=%s, masternodeIP=%s, pubKeyMN=%s)", nValue / COIN, nValue % COIN, HexStr(scriptPubKey).substr(0, 30), masternodeIP, HexStr(pubKeyMN));
+    // JINY END
 }
 
 CMutableTransaction::CMutableTransaction() : nVersion(CTransaction::CURRENT_VERSION), nLockTime(0) {}

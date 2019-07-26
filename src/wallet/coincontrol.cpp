@@ -19,5 +19,9 @@ void CCoinControl::SetNull()
     m_confirm_target.reset();
     m_signal_bip125_rbf.reset();
     m_fee_mode = FeeEstimateMode::UNSET;
+    // JINY BEGIN
+    m_signal_masternode_ip.reset();
+    m_signal_masternode_payee.reset();
+    // JINY END
 }
 

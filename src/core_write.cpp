@@ -225,6 +225,13 @@ void TxToUniv(const CTransaction& tx, const uint256& hashBlock, UniValue& entry,
         UniValue o(UniValue::VOBJ);
         ScriptPubKeyToUniv(txout.scriptPubKey, o, true);
         out.pushKV("scriptPubKey", o);
+        // JINY BEGIN
+        if (txout.masternodeIP != "")
+        {
+            out.pushKV("masternodeIP", txout.masternodeIP);
+            out.pushKV("pubKeyMN", HexStr(txout.pubKeyMN));
+        }
+        // JINY END
         vout.push_back(out);
     }
     entry.pushKV("vout", vout);

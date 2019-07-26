@@ -77,6 +77,11 @@ public:
     // If from a payment request, this is used for storing the memo
     QString message;
 
+    // JINY BEGIN
+    QString masternodeIP;
+    QString masternodePayee;
+    // JINY END
+
     // If from a payment request, paymentRequest.IsInitialized() will be true
     PaymentRequestPlus paymentRequest;
     // Empty if no authentication or invalid signature/cert/etc.
@@ -98,6 +103,10 @@ public:
         if (!ser_action.ForRead() && paymentRequest.IsInitialized())
             paymentRequest.SerializeToString(&sPaymentRequest);
         std::string sAuthenticatedMerchant = authenticatedMerchant.toStdString();
+        // JINY BEGIN
+        std::string sMasternodeIP = masternodeIP.toStdString();
+        std::string sMasternodePayee = masternodePayee.toStdString();
+        // JINY END
 
         READWRITE(this->nVersion);
         READWRITE(sAddress);
@@ -106,6 +115,10 @@ public:
         READWRITE(sMessage);
         READWRITE(sPaymentRequest);
         READWRITE(sAuthenticatedMerchant);
+        // JINY BEGIN
+        READWRITE(sMasternodeIP);
+        READWRITE(sMasternodePayee);
+        // JINY END
 
         if (ser_action.ForRead())
         {
@@ -115,6 +128,10 @@ public:
             if (!sPaymentRequest.empty())
                 paymentRequest.parse(QByteArray::fromRawData(sPaymentRequest.data(), sPaymentRequest.size()));
             authenticatedMerchant = QString::fromStdString(sAuthenticatedMerchant);
+            // JINY BEGIN
+            masternodeIP = QString::fromStdString(sMasternodeIP);
+            masternodePayee = QString::fromStdString(sMasternodePayee);
+            // JINY END
         }
     }
 };

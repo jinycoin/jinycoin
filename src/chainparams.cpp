@@ -85,6 +85,7 @@ public:
         consensus.nMasternodePaymentsIncreasePeriod = 20 * 365 * 1440; // 20 common years
         consensus.nMasternodeCollateralMinimum = 1000000; // starting MN collateral
         consensus.nMasternodeCollateralMaximum = 1000000; // MN collateral at infinity
+        consensus.nMasternodeCollateralOnChain = 10000000; // MN collateral on chain
 
         consensus.nInstantSendKeepLock = 24;
 
@@ -196,10 +197,11 @@ public:
             {
                 {     0, uint256S("0x1fc41f203d6b2305c5f527b6db69e84fa6a1db343ead5c5a5153d0a10afa9dff")},
                 {     1, uint256S("0x3b15ed0578c29346a7598f20609dd447f68df21c5026491b87d39cefd854be28")},
+                { 49000, uint256S("0x159cfbbb4af957ce2bc3a56699f876a7f340fc2c75f2ba6f5a4a445439e2d122")},
             }
         };
         // JINY BEGIN
-        consensus.nlastValidPowHashHeight = 0;
+        consensus.nlastValidPowHashHeight = 49000;
         // JINY
 
         chainTxData = ChainTxData{
@@ -234,6 +236,7 @@ public:
         consensus.nMasternodePaymentsIncreasePeriod = 25;
         consensus.nMasternodeCollateralMinimum = 10; // starting MN collateral
         consensus.nMasternodeCollateralMaximum = 1000; // MN collateral at infinity
+        consensus.nMasternodeCollateralOnChain = 10000000; // MN collateral on chain
 
         consensus.nInstantSendKeepLock = 6;
 
@@ -370,6 +373,7 @@ public:
         consensus.nMasternodePaymentsIncreasePeriod = 10;
         consensus.nMasternodeCollateralMinimum = 1; // starting MN collateral
         consensus.nMasternodeCollateralMaximum = 100; // MN collateral at infinity
+        consensus.nMasternodeCollateralOnChain = 10000000; // MN collateral on chain
 
         consensus.nInstantSendKeepLock = 6;
 

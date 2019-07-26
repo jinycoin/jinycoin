@@ -65,6 +65,8 @@ bool CMasternodePayments::CanVote(COutPoint outMasternode, int nBlockHeight)
 
 void CMasternodePayments::FillBlockPayee(CMutableTransaction& txNew, int nBlockHeight, CAmount blockReward, CTxOut& txoutMasternodeRet)
 {
+  if (nBlockHeight < 50000) {
+  // Dash MN model
     // make sure it's not filled yet
     txoutMasternodeRet = CTxOut();
 
@@ -96,6 +98,35 @@ void CMasternodePayments::FillBlockPayee(CMutableTransaction& txNew, int nBlockH
                 LogPrint(BCLog::MNPAYMENTS, "CMasternodePayments::FillBlockPayee -- Masternode payment failed to %s - outpoint %s\n", masternodePayment, mn.vin.prevout.ToStringShort());
             }
         }
+  } else {
+  // Blockchain MN model
+    // make sure it's not filled yet
+    txoutMasternodeRet = CTxOut();
+
+    // GET MASTERNODE PAYMENT VARIABLES SETUP
+    CAmount masternodePayment = GetMasternodePayment(nBlockHeight, blockReward);
+
+    std::map<COutPoint, CMasternode> mapMasternodes = mnodeman.GetFullMasternodeMap();
+    std::map<COutPoint, CMasternode>::iterator mnit = mapMasternodes.begin();
+    while (mnit != mapMasternodes.end()) {
+        if (mnit->second.IsEnabled())
+        {
+            CScript payee = GetScriptForDestination(mnit->second.pubKeyCollateralAddress.GetID());
+            txoutMasternodeRet = CTxOut(masternodePayment, payee);
+            txNew.vout.push_back(txoutMasternodeRet);
+
+            CTxDestination address1;
+            ExtractDestination(payee, address1);
+            std::string address2 = EncodeDestination(address1);
+            LogPrint(BCLog::MNPAYMENTS, "CMasternodePayments::FillBlockPayee -- Masternode payment %d to %s\n", masternodePayment, address2);
+        }
+        else
+        {
+            LogPrint(BCLog::MNPAYMENTS, "CMasternodePayments::FillBlockPayee -- Masternode payment failed to %s - outpoint %s\n", masternodePayment, mnit->second.vin.prevout.ToStringShort());
+        }
+        ++mnit;
+    }
+  }
 }
 
 int CMasternodePayments::GetMinMasternodePaymentsProto() {

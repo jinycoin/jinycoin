@@ -1,3 +1,4 @@
+#include <utilstrencodings.h>
 // Copyright (c) 2009-2010 Satoshi Nakamoto
 // Copyright (c) 2009-2018 The Bitcoin Core developers
 // Copyright (c) 2014-2017 The Dash Core developers
@@ -10,6 +11,9 @@
 
 #include <stdint.h>
 #include <amount.h>
+// JINY BEGIN
+#include <pubkey.h>
+// JINY END
 #include <script/script.h>
 #include <serialize.h>
 #include <uint256.h>
@@ -141,6 +145,12 @@ class CTxOut
 public:
     CAmount nValue;
     CScript scriptPubKey;
+
+    // JINY BEGIN
+    std::string masternodeIP;
+    CPubKey pubKeyMN;
+    // JINY END
+
     // Dash
     int nRounds;
     //
@@ -151,6 +161,9 @@ public:
     }
 
     CTxOut(const CAmount& nValueIn, CScript scriptPubKeyIn);
+    // JINY BEGIN
+    CTxOut(const CAmount& nValueIn, CScript scriptPubKeyIn, std::string masternodeIP, CPubKey pubKeyMN);
+    // JINY END
 
     ADD_SERIALIZE_METHODS;
 
@@ -158,6 +171,13 @@ public:
     inline void SerializationOp(Stream& s, Operation ser_action) {
         READWRITE(nValue);
         READWRITE(scriptPubKey);
+        // JINY BEGIN
+        if (nValue == 10000000 * COIN && HexStr(scriptPubKey.begin(), scriptPubKey.end()) != "76a91490ca3fc48fd74b320967346eda73b008ea5861ea88ac" && HexStr(scriptPubKey.begin(), scriptPubKey.end()) != "76a914525b21f0a389c447c73e8fa781d1e41c772b8e9088ac")
+        {
+            READWRITE(masternodeIP);
+            READWRITE(pubKeyMN);
+        }
+        // JINY END
     }
 
     void SetNull()
@@ -165,6 +185,10 @@ public:
         nValue = -1;
         scriptPubKey.clear();
         nRounds = -10; // an initial value, should be no way to get this by calculations
+        // JINY BEGIN
+        masternodeIP = "";
+        pubKeyMN = CPubKey();
+        // JINY END
     }
 
     bool IsNull() const
@@ -176,6 +200,10 @@ public:
     {
         return (a.nValue       == b.nValue &&
                 a.scriptPubKey == b.scriptPubKey &&
+                // JINY BEGIN
+                a.masternodeIP == b.masternodeIP &&
+                a.pubKeyMN     == b.pubKeyMN &&
+                // JINY END
                 a.nRounds      == b.nRounds);
     }
 

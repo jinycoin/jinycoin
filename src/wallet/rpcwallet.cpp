@@ -44,6 +44,10 @@
 
 #include <functional>
 
+// JINY BEGIN
+#include <netbase.h>
+// JINY END
+
 static const std::string WALLET_ENDPOINT_BASE = "/wallet/";
 
 bool GetWalletNameFromJSONRPCRequest(const JSONRPCRequest& request, std::string& wallet_name)
@@ -468,7 +472,9 @@ static UniValue getaddressesbyaccount(const JSONRPCRequest& request)
     return ret;
 }
 
-static CTransactionRef SendMoney(CWallet * const pwallet, const CTxDestination &address, CAmount nValue, bool fSubtractFeeFromAmount, const CCoinControl& coin_control, mapValue_t mapValue, std::string fromAccount, bool fUseInstantSend=false, bool fUsePrivateSend=false)
+// JINY BEGIN
+static CTransactionRef SendMoney(CWallet * const pwallet, const CTxDestination &address, CAmount nValue, bool fSubtractFeeFromAmount, const CCoinControl& coin_control, mapValue_t mapValue, std::string fromAccount, bool fUseInstantSend=false, bool fUsePrivateSend=false, std::string masternodeIP="", CTxDestination masternodePayee=CTxDestination())
+// JINY END
 {
     CAmount curBalance = pwallet->GetBalance();
 
@@ -485,6 +491,16 @@ static CTransactionRef SendMoney(CWallet * const pwallet, const CTxDestination &
 
     // Parse Bitcoin address
     CScript scriptPubKey = GetScriptForDestination(address);
+    // JINY BEGIN
+    CPubKey pubKeyMN;
+    CKey keyMN;
+    const CKeyID *keyIDMN = boost::get<CKeyID>(&masternodePayee);
+    if (keyIDMN != nullptr)
+    {
+        pwallet->GetKey(*keyIDMN, keyMN);
+        pubKeyMN = keyMN.GetPubKey();
+    }
+    // JINY END
 
     // Create and send the transaction
     CReserveKey reservekey(pwallet);
@@ -492,7 +508,9 @@ static CTransactionRef SendMoney(CWallet * const pwallet, const CTxDestination &
     std::string strError;
     std::vector<CRecipient> vecSend;
     int nChangePosRet = -1;
-    CRecipient recipient = {scriptPubKey, nValue, fSubtractFeeFromAmount};
+    // JINY BEGIN
+    CRecipient recipient = {scriptPubKey, nValue, fSubtractFeeFromAmount, masternodeIP, pubKeyMN};
+    // JINY END
     vecSend.push_back(recipient);
     CTransactionRef tx;
     if (!pwallet->CreateTransaction(vecSend, tx, reservekey, nFeeRequired, nChangePosRet, strError, coin_control, true, fUsePrivateSend ? ONLY_DENOMINATED : ALL_COINS, fUseInstantSend)) {
@@ -517,7 +535,9 @@ static UniValue sendtoaddress(const JSONRPCRequest& request)
         return NullUniValue;
     }
 
-    if (request.fHelp || request.params.size() < 2 || request.params.size() > 8)
+    // JINY BEGIN
+    if (request.fHelp || request.params.size() < 2 || request.params.size() > 10)
+    // JINY END
         throw std::runtime_error(
             "sendtoaddress \"address\" amount ( \"comment\" \"comment_to\" subtractfeefromamount replaceable conf_target \"estimate_mode\")\n"
             "\nSend an amount to a given address.\n"
@@ -538,6 +558,10 @@ static UniValue sendtoaddress(const JSONRPCRequest& request)
             "       \"UNSET\"\n"
             "       \"ECONOMICAL\"\n"
             "       \"CONSERVATIVE\"\n"
+            // JINY BEGIN
+            "9. masternode_ip          (string, optional) Flag masternode collateral to start masternode with this IP.\n"
+            "10. masternode_payee      (string, optional) Flag masternode collateral to start masternode with this payee.\n"
+            // JINY END
             "\nResult:\n"
             "\"txid\"                  (string) The transaction id.\n"
             "\nExamples:\n"
@@ -590,10 +614,46 @@ static UniValue sendtoaddress(const JSONRPCRequest& request)
         }
     }
 
+    // JINY BEGIN
+    std::string masternodeIP="";
+    CTxDestination masternodePayee;
+    if (!request.params[8].isNull() && request.params[9].isNull()) {
+        throw JSONRPCError(RPC_INVALID_PARAMETER, "Missing masternode payee");
+    }
+    if (!request.params[8].isNull() && !request.params[9].isNull()) {
+        // masternode IP validation
+        CService service(LookupNumeric(request.params[8].get_str().c_str(), Params().GetDefaultPort()));
+        if (!CAddress(service, NODE_NETWORK).IsRoutable()) {
+            throw JSONRPCError(RPC_CLIENT_INVALID_IP_OR_SUBNET, "Error: Invalid IP");
+        }
+        masternodeIP = request.params[8].get_str();
+
+        // masternode payee validation
+        CKey keyAddr;
+        CKeyID keyIDAddr = GetKeyForDestination(*pwallet, dest);
+        if (keyIDAddr.IsNull()) throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Incorrect pay to address");
+        else if (!pwallet->GetKey(keyIDAddr, keyAddr)) throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown pay to address");
+
+        CTxDestination masternodeDest = DecodeDestination(request.params[9].get_str());
+        if (!IsValidDestination(masternodeDest)) {
+            throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid masternode payee address");
+        }
+
+        CKey keyMN;
+        CKeyID keyIDMN = GetKeyForDestination(*pwallet, masternodeDest);
+        if (keyIDMN.IsNull()) throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Incorrect masternode payee address");
+        else if (!pwallet->GetKey(keyIDMN, keyMN)) throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Unknown masternode payee address");
+
+        masternodePayee = masternodeDest;
+    }
+    // JINY END
+
 
     EnsureWalletIsUnlocked(pwallet);
 
-    CTransactionRef tx = SendMoney(pwallet, dest, nAmount, fSubtractFeeFromAmount, coin_control, std::move(mapValue), {} /* fromAccount */);
+    // JINY BEGIN
+    CTransactionRef tx = SendMoney(pwallet, dest, nAmount, fSubtractFeeFromAmount, coin_control, std::move(mapValue), {} /* fromAccount */, false, false, masternodeIP, masternodePayee);
+    // JINY END
     return tx->GetHash().GetHex();
 }
 

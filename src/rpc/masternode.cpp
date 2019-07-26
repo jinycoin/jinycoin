@@ -146,8 +146,8 @@ UniValue masternode(const JSONRPCRequest& request)
     if (request.fHelp  ||
         (
 #ifdef ENABLE_WALLET
-            strCommand != "start-alias" && strCommand != "start-all" && strCommand != "start-missing" &&
-         strCommand != "start-disabled" && strCommand != "outputs" &&
+            /*strCommand != "start-alias" && strCommand != "start-all" && strCommand != "start-missing" &&
+         strCommand != "start-disabled" && */strCommand != "outputs" &&
 #endif // ENABLE_WALLET
          strCommand != "list" && strCommand != "list-conf" && strCommand != "count" &&
          strCommand != "debug" && strCommand != "current" && strCommand != "winner" && strCommand != "winners" && strCommand != "genkey" &&
@@ -166,8 +166,8 @@ UniValue masternode(const JSONRPCRequest& request)
                 "  genkey       - Generate new masternodeprivkey\n"
 #ifdef ENABLE_WALLET
                 "  outputs      - Print masternode compatible outputs\n"
-                "  start-alias  - Start single remote masternode by assigned alias configured in masternode.conf\n"
-                "  start-<mode> - Start remote masternodes configured in masternode.conf (<mode>: 'all', 'missing', 'disabled')\n"
+                //"  start-alias  - Start single remote masternode by assigned alias configured in masternode.conf\n"
+                //"  start-<mode> - Start remote masternodes configured in masternode.conf (<mode>: 'all', 'missing', 'disabled')\n"
 #endif // ENABLE_WALLET
                 "  status       - Print masternode status information\n"
                 "  list         - Print list of all known masternodes (see masternodelist for more info)\n"
@@ -270,7 +270,7 @@ UniValue masternode(const JSONRPCRequest& request)
     }
 
 #ifdef ENABLE_WALLET
-    if (strCommand == "start-alias")
+    /*if (strCommand == "start-alias")
     {
         if (request.params.size() < 2)
             throw JSONRPCError(RPC_INVALID_PARAMETER, "Please specify an alias");
@@ -367,7 +367,7 @@ UniValue masternode(const JSONRPCRequest& request)
         returnObj.push_back(Pair("detail", resultsObj));
 
         return returnObj;
-    }
+    }*/
 #endif // ENABLE_WALLET
 
     if (strCommand == "genkey")
@@ -612,10 +612,10 @@ UniValue masternodelist(const JSONRPCRequest& request)
                 objMN.push_back(Pair("address", mn.addr.ToString()));
                 objMN.push_back(Pair("payee", EncodeDestination(mn.pubKeyCollateralAddress.GetID())));
                 objMN.push_back(Pair("status", mn.GetStatus()));
-                objMN.push_back(Pair("protocol", mn.nProtocolVersion));
-                objMN.push_back(Pair("daemonversion", mn.lastPing.nDaemonVersion > DEFAULT_DAEMON_VERSION ? FormatVersion(mn.lastPing.nDaemonVersion) : "Unknown"));
-                objMN.push_back(Pair("lastseen", (int64_t)mn.lastPing.sigTime));
-                objMN.push_back(Pair("activeseconds", (int64_t)(mn.lastPing.sigTime - mn.sigTime)));
+                //objMN.push_back(Pair("protocol", mn.nProtocolVersion));
+                //objMN.push_back(Pair("daemonversion", mn.lastPing.nDaemonVersion > DEFAULT_DAEMON_VERSION ? FormatVersion(mn.lastPing.nDaemonVersion) : "Unknown"));
+                //objMN.push_back(Pair("lastseen", (int64_t)mn.lastPing.sigTime));
+                //objMN.push_back(Pair("activeseconds", (int64_t)(mn.lastPing.sigTime - mn.sigTime)));
                 obj.push_back(Pair(strOutpoint, objMN));
             } else if (strMode == "lastpaidblock") {
                 if (strFilter !="" && strOutpoint.find(strFilter) == std::string::npos) continue;

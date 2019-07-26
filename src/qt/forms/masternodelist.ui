@@ -149,6 +149,9 @@
                <property name="text">
                 <string>S&amp;tart alias</string>
                </property>
+               <property name="visible">
+                <bool>false</bool>
+               </property>
               </widget>
              </item>
              <item>
@@ -156,12 +159,18 @@
                <property name="text">
                 <string>Start &amp;all</string>
                </property>
+               <property name="visible">
+                <bool>false</bool>
+               </property>
               </widget>
              </item>
              <item>
               <widget class="QPushButton" name="startMissingButton">
                <property name="text">
                 <string>Start &amp;MISSING</string>
+               </property>
+               <property name="visible">
+                <bool>false</bool>
                </property>
               </widget>
              </item>

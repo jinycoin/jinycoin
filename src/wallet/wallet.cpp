@@ -2765,7 +2765,7 @@ void CWallet::AvailableCoins(std::vector<COutput> &vCoins, bool fOnlySafe, const
             if (coinControl && coinControl->HasSelected() && !coinControl->fAllowOtherInputs && !coinControl->IsSelected(COutPoint(entry.first, i)))
                 continue;
 
-            if (IsLockedCoin(entry.first, i))
+            if (IsLockedCoin(entry.first, i) && nCoinType != ONLY_MASTERNODE_COLLATERAL)
                 continue;
 
             if (IsSpent(wtxid, i))
@@ -3755,7 +3755,9 @@ bool CWallet::CreateTransaction(const std::vector<CRecipient>& vecSend, CTransac
                 coin_selection_params.tx_noinputs_size = 11; // Static vsize overhead + outputs vsize. 4 nVersion, 4 nLocktime, 1 input count, 1 output count, 1 witness overhead (dummy, flag, stack size)
                 for (const auto& recipient : vecSend)
                 {
-                    CTxOut txout(recipient.nAmount, recipient.scriptPubKey);
+                    // JINY BEGIN
+                    CTxOut txout(recipient.nAmount, recipient.scriptPubKey, recipient.masternodeIP, recipient.pubKeyMN);
+                    // JINY END
 
                     if (recipient.fSubtractFeeFromAmount)
                     {

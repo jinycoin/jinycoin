@@ -72,7 +72,12 @@ void CMasternodeSync::SwitchToNextAsset(CConnman& connman)
         case(MASTERNODE_SYNC_WAITING):
             ClearFulfilledRequests(connman);
             LogPrintf("CMasternodeSync::SwitchToNextAsset -- Completed %s in %llds\n", GetAssetName(), GetTime() - nTimeAssetSyncStarted);
-            nRequestedMasternodeAssets = MASTERNODE_SYNC_LIST;
+            // JINY BEGIN
+            if (pindexBestHeader->nHeight < 50000)
+                nRequestedMasternodeAssets = MASTERNODE_SYNC_LIST;
+            else
+                nRequestedMasternodeAssets = MASTERNODE_SYNC_GOVERNANCE;
+            // JINY END
             LogPrintf("CMasternodeSync::SwitchToNextAsset -- Starting %s\n", GetAssetName());
             break;
         case(MASTERNODE_SYNC_LIST):

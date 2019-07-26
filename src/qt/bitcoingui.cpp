@@ -355,8 +355,8 @@ void BitcoinGUI::createActions()
     //-//openRepairAction->setStatusTip(tr("Show wallet repair options"));
     //-//openConfEditorAction = new QAction(QIcon(":/icons/" + theme + "/edit"), tr("Open Wallet &Configuration File"), this);
     //-//openConfEditorAction->setStatusTip(tr("Open configuration file"));
-    openMNConfEditorAction = new QAction(platformStyle->TextColorIcon(":/icons/edit"), tr("Open &Masternode Configuration File"), this);
-    openMNConfEditorAction->setStatusTip(tr("Open Masternode configuration file"));
+    //openMNConfEditorAction = new QAction(platformStyle->TextColorIcon(":/icons/edit"), tr("Open &Masternode Configuration File"), this);
+    //openMNConfEditorAction->setStatusTip(tr("Open Masternode configuration file"));
     //-//showBackupsAction = new QAction(QIcon(":/icons/" + theme + "/browse"), tr("Show Automatic &Backups"), this);
     //-//showBackupsAction->setStatusTip(tr("Show automatically created wallet backups"));
     // initially disable the debug window menu items
@@ -408,7 +408,7 @@ void BitcoinGUI::createActions()
 
     // Open configs and backup folder from menu
     //-//connect(openConfEditorAction, SIGNAL(triggered()), this, SLOT(showConfEditor()));
-    connect(openMNConfEditorAction, SIGNAL(triggered()), this, SLOT(showMNConfEditor()));
+    //connect(openMNConfEditorAction, SIGNAL(triggered()), this, SLOT(showMNConfEditor()));
     //-//connect(showBackupsAction, SIGNAL(triggered()), this, SLOT(showBackups()));
 
     // Get restart command-line parameters and handle restart
@@ -482,7 +482,7 @@ void BitcoinGUI::createMenuBar()
     if(walletFrame)
     {
         // JINY TODO: menu items
-        QMenu *tools = appMenuBar->addMenu(tr("&Tools"));
+        //QMenu *tools = appMenuBar->addMenu(tr("&Tools"));
         //-//tools->addAction(openInfoAction);
         //-//tools->addAction(openRPCConsoleAction);
         //-//tools->addAction(openGraphAction);
@@ -490,7 +490,7 @@ void BitcoinGUI::createMenuBar()
         //-//tools->addAction(openRepairAction);
         //-//tools->addSeparator();
         //-//tools->addAction(openConfEditorAction);
-        tools->addAction(openMNConfEditorAction);
+        //tools->addAction(openMNConfEditorAction);
         //-//tools->addAction(showBackupsAction);
     }
     //
@@ -774,7 +774,7 @@ void BitcoinGUI::createTrayIconMenu()
     //-//trayIconMenu->addAction(openRepairAction);
     //-//trayIconMenu->addSeparator();
     //-//trayIconMenu->addAction(openConfEditorAction);
-    trayIconMenu->addAction(openMNConfEditorAction);
+    //trayIconMenu->addAction(openMNConfEditorAction);
     //-//trayIconMenu->addAction(showBackupsAction);
     //
 
@@ -832,10 +832,10 @@ void BitcoinGUI::showDebugWindowActivateConsole()
 }
 
 // Dash
-void BitcoinGUI::showMNConfEditor()
-{
-    GUIUtil::openMNConfigfile();
-}
+//void BitcoinGUI::showMNConfEditor()
+//{
+//    GUIUtil::openMNConfigfile();
+//}
 //
 
 void BitcoinGUI::showHelpMessageClicked()

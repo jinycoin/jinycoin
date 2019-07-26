@@ -82,6 +82,22 @@ bool CMasternodeMan::Add(CMasternode &mn)
     return true;
 }
 
+// JINY BEGIN
+bool CMasternodeMan::Remove(COutPoint out)
+{
+    LOCK(cs);
+
+    auto mnit = mapMasternodes.find(out);
+    if (mnit != mapMasternodes.end())
+    {
+        LogPrint(BCLog::MASTERNODE, "CMasternodeMan::Remove -- Removing Masternode: addr=%s\n", mnit->second.addr.ToString());
+        mapMasternodes.erase(mnit);
+    }
+    fMasternodesRemoved = true;
+    return true;
+}
+// JINY END
+
 void CMasternodeMan::AskForMN(CNode* pnode, const COutPoint& outpoint, CConnman& connman)
 {
     if(!pnode) return;

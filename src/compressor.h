@@ -105,6 +105,13 @@ public:
         }
         CScriptCompressor cscript(REF(txout.scriptPubKey));
         READWRITE(cscript);
+        // JINY BEGIN
+        if (txout.nValue == 10000000 * COIN)
+        {
+            READWRITE(txout.masternodeIP);
+            READWRITE(txout.pubKeyMN);
+        }
+        // JINY END
     }
 };
 

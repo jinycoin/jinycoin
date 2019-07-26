@@ -21,6 +21,11 @@
 #include <index/txindex.h>
 // JINY BEGIN
 #include <key_io.h>
+#include <keystore.h>
+#include <netbase.h>
+#ifdef ENABLE_WALLET
+#include <wallet/wallet.h>
+#endif // ENABLE_WALLET
 // JINY END
 #include <policy/fees.h>
 #include <policy/policy.h>
@@ -1237,8 +1242,10 @@ CAmount GetBlockSubsidy(int nHeight, CBlockHeader pblock, const Consensus::Param
     // JINY BEGIN
     if (nHeight == 1)
         return 200000000 * COIN;        // Premine 20 million coins
-    else if (nHeight >= 2 || nHeight <= 90000000)
+    else if (nHeight >= 2 && nHeight < 50000)
         return 20 * COIN;               // Default subsidy 20 coins
+    else if (nHeight >= 50000 && nHeight <= 90000000)
+        return 1 * COIN;               // Default subsidy 1 coins
     else
         return 0 * COIN;                // No reward after maximum supply reached
     // JINY END
@@ -1252,6 +1259,7 @@ CAmount GetMasternodePayment(int nHeight, CAmount blockValue)
     int nMNPIBlock = Params().GetConsensus().nMasternodePaymentsIncreaseBlock;
 
     if(nHeight >= nMNPIBlock) ret = 10 * COIN; // 10 coins
+    if(nHeight >= 50000) ret = 100 * COIN; // 100 coins on chain
 
     return ret;
 }
@@ -1722,6 +1730,44 @@ DisconnectResult CChainState::DisconnectBlock(const CBlock& block, const CBlockI
     // move best block pointer to prevout block
     view.SetBestBlock(pindex->pprev->GetBlockHash());
 
+    // JINY BEGIN
+    if (pindex->nHeight >= 50000)
+    for (unsigned int i = 0; i < block.vtx.size(); i++)
+    {
+        const CTransaction &tx = *(block.vtx[i]);
+        if (!tx.IsCoinBase())
+        {
+            for (unsigned int o = 0; o < tx.vin.size(); o++)
+            {
+                const COutPoint outpoint = tx.vin[o].prevout;
+                CTransactionRef prevtxref;
+                uint256 prevhash;
+                if (GetTransaction(outpoint.hash, prevtxref, Params().GetConsensus(), prevhash, true))
+                {
+                    const CTransaction &prevtx = *(prevtxref);
+                    const CTxOut txout = prevtx.vout[outpoint.n];
+                    if (txout.nValue == 10000000 * COIN && txout.masternodeIP != "")
+                    {
+                        CService service(LookupNumeric(txout.masternodeIP.c_str(), Params().GetDefaultPort()));
+                        if (CAddress(service, NODE_NETWORK).IsRoutable())
+                        {
+                            CMasternode mn(service, outpoint, txout.pubKeyMN, txout.pubKeyMN, PROTOCOL_VERSION);
+                            mnodeman.Add(mn);
+                        }
+                    }
+                }
+            }
+            for (unsigned int o = 0; o < tx.vout.size(); o++)
+            {
+                // don't need to check collateral, just remove outpoint if exist in masternode list
+                {
+                    const COutPoint outpoint(tx.GetHash(), o);
+                    mnodeman.Remove(outpoint);
+                }
+            }
+        }
+    }
+    // JINY END
     return fClean ? DISCONNECT_OK : DISCONNECT_UNCLEAN;
 }
 
@@ -2159,8 +2205,25 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     // JINY BEGIN
     CAmount masternodePayment = GetMasternodePayment(pindex->nHeight, blockReward);
 
+    if (pindex->nHeight == 50000)
+        mnodeman.Clear(); // Clear masternode list on reindex
+
     std::map<COutPoint, CMasternode> mapMasternodes = mnodeman.GetFullMasternodeMap();
 
+    int nNoMasternodes = 0;
+    if (pindex->nHeight >= 50000) {
+        std::map<COutPoint, CMasternode>::iterator mnit = mapMasternodes.begin();
+        while (mnit != mapMasternodes.end()) {
+            if (mnit->second.IsEnabled())
+            {
+                nNoMasternodes++;
+            }
+            ++mnit;
+        }
+    }
+
+  if (pindex->nHeight < 50000) {
+  // Dash MN model
     //Check is coinbase
     int nOutputs = 0;
     int nMinerOutputs = 0;
@@ -2257,6 +2320,94 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
         }
     }
     nMinerOutputs = 0;
+  } else {
+  //Blockchain MN model
+    // check all coinbase txs
+    CAmount minerReward = 0;
+    int nMasternodeOutputs = 0;
+
+    for (unsigned int j = 0; j < block.vtx.size(); j++)
+    {
+        const CTransaction &tx = *(block.vtx[j]);
+        if (tx.IsCoinBase())
+        {
+            for (unsigned int i = 0; i < tx.vout.size(); i++)
+            {
+                bool fMasternode = false;
+
+                CTxDestination address;
+                ExtractDestination(tx.vout[i].scriptPubKey, address);
+                std::string addressOutput = EncodeDestination(address);
+
+                LogPrint(BCLog::ALL, "Validation: tx.vout[%d].nValue = %s to %s\n", i, FormatMoney(tx.vout[i].nValue), addressOutput);
+
+                if (tx.vout[i].nValue == masternodePayment)
+                {
+                    if (!masternodeSync.IsSynced())
+                    {
+                        // masternode list not synced yet, let's assume it is masternode payment because of correct value
+                        fMasternode = true;
+                    } else {
+                        // check in masternode list
+                        std::map<COutPoint, CMasternode>::iterator mnit = mapMasternodes.begin();
+                        while (!fMasternode && mnit != mapMasternodes.end()) {
+                            if (tx.vout[i].scriptPubKey == GetScriptForDestination(mnit->second.pubKeyCollateralAddress.GetID()))
+                            {
+                                if (mnit->second.IsEnabled())
+                                {
+                                    fMasternode = true;
+
+                                    // remove from list to not validate same MN multiple times
+                                    mapMasternodes.erase(mnit++);
+
+                                    //passed collateral check
+                                    LogPrint(BCLog::ALL, "Validation pass: tx.vout[%d].scriptPubKey.ToString() = %s\n", i, addressOutput);
+                                } else {
+                                    //failed collateral check
+                                    LogPrint(BCLog::ALL, "Validation fail: tx.vout[%d].scriptPubKey.ToString() = %s\n", i, addressOutput);
+                                    return state.DoS(100, error("%s: coinbase pays invalid masternode %s", __func__, addressOutput), REJECT_INVALID, "bad-masternode-cb-invalid");
+                                }
+                            } else {
+                                ++mnit;
+                            }
+                        }
+                    }
+                }
+
+                if (fMasternode) {
+                    // masternode payment
+                    nMasternodeOutputs++;
+                    LogPrint(BCLog::ALL, "Validation: Masternode output=%d nValue=%s count=%d blockReward=%s\n",
+                            i, FormatMoney(tx.vout[i].nValue), nMasternodeOutputs, FormatMoney(blockReward));
+                } else {
+                    // miner payment
+                    minerReward += tx.vout[i].nValue;
+                    LogPrint(BCLog::ALL, "Validation: Miner output=%d nValue=%s minerReward=%s blockReward=%s\n",
+                            i, FormatMoney(tx.vout[i].nValue), FormatMoney(minerReward), FormatMoney(blockReward));
+                }
+            }
+            LogPrint(BCLog::ALL, "Validation: tx->GetValueOut()=%s\n", FormatMoney(tx.GetValueOut()));
+        }
+    }
+
+    // check miner reward
+    if (minerReward > blockReward)
+    {
+        LogPrint(BCLog::ALL, "Validation: Miner reward too large minerReward=%s blockReward=%d\n",
+            FormatMoney(minerReward), FormatMoney(blockReward));
+        return state.DoS(100, error("%s: coinbase pays too much", __func__), REJECT_INVALID, "bad-miner-cb-amount");
+    }
+
+    if (pindex->nHeight >= chainparams.GetConsensus().nMasternodePaymentsStartBlock)
+    {
+        // check number of masternodes payed
+        if ((nMasternodeOutputs < nNoMasternodes))
+        {
+            LogPrint(BCLog::ALL, "Validation: nMasternodeOutputs < nNoMasternodes: %d < %d\n", nMasternodeOutputs, nNoMasternodes);
+            return state.DoS(100, error("%s: coinbase pays fewer masternodes", __func__), REJECT_INVALID, "bad-miner-mn-count");
+        }
+    }
+  }
     // JINY END
 
     if (!control.Wait())
@@ -2278,6 +2429,39 @@ bool CChainState::ConnectBlock(const CBlock& block, CValidationState& state, CBl
     assert(pindex->phashBlock);
     // add this block to the view's block chain
     view.SetBestBlock(pindex->GetBlockHash());
+
+    // JINY BEGIN
+    if (pindex->nHeight >= 50000)
+    for (unsigned int i = 0; i < block.vtx.size(); i++)
+    {
+        const CTransaction &tx = *(block.vtx[i]);
+        if (!tx.IsCoinBase())
+        {
+            for (unsigned int o = 0; o < tx.vout.size(); o++)
+            {
+                const COutPoint outpoint(tx.GetHash(), o);
+                const CTxOut txout = tx.vout[o];
+                if (txout.nValue == 10000000 * COIN && txout.masternodeIP != "")
+                {
+                    CService service(LookupNumeric(txout.masternodeIP.c_str(), Params().GetDefaultPort()));
+                    if (CAddress(service, NODE_NETWORK).IsRoutable())
+                    {
+                        CMasternode mn(service, outpoint, txout.pubKeyMN, txout.pubKeyMN, PROTOCOL_VERSION);
+                        mnodeman.Add(mn);
+                    }
+                }
+            }
+            for (unsigned int o = 0; o < tx.vin.size(); o++)
+            {
+                // don't need to check collateral, just remove outpoint if exist in masternode list
+                {
+                    const COutPoint outpoint = tx.vin[o].prevout;
+                    mnodeman.Remove(outpoint);
+                }
+            }
+        }
+    }
+    // JINY END
 
     int64_t nTime5 = GetTimeMicros(); nTimeIndex += nTime5 - nTime4;
     LogPrint(BCLog::BENCH, "    - Index writing: %.2fms [%.2fs (%.2fms/blk)]\n", MILLI * (nTime5 - nTime4), nTimeIndex * MICRO, nTimeIndex * MILLI / nBlocksTotal);
@@ -3535,7 +3719,7 @@ static bool ContextualCheckBlock(const CBlock& block, CValidationState& state, c
         nLockTimeFlags |= LOCKTIME_MEDIAN_TIME_PAST;
     }
 
-    int64_t nLockTimeCutoff = (nLockTimeFlags & LOCKTIME_MEDIAN_TIME_PAST)
+    int64_t nLockTimeCutoff = (nLockTimeFlags & LOCKTIME_MEDIAN_TIME_PAST && pindexPrev)
                               ? pindexPrev->GetMedianTimePast()
                               : block.GetBlockTime();
 

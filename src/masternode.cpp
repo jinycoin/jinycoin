@@ -159,12 +159,19 @@ CMasternode::CollateralStatus CMasternode::CheckCollateral(const COutPoint& outp
 // JINY BEGIN
 bool CMasternode::CollateralValueCheck(int nHeight, CAmount TxValue)
 {
+  if (nHeight < 50000)
+  {
+  // Dash MN model
     CAmount MNCollateral = CollateralValue(nHeight);
 
     CAmount MinCollateral = Params().GetConsensus().nMasternodeCollateralMinimum * COIN;
     CAmount MaxCollateral = Params().GetConsensus().nMasternodeCollateralMaximum * COIN;
 
     return (TxValue >= MinCollateral && TxValue >= 0.999 * MNCollateral && TxValue <= 1.001 * MNCollateral && TxValue <= MaxCollateral);
+  } else {
+  // Blockchain MN model
+    return (TxValue == Params().GetConsensus().nMasternodeCollateralOnChain * COIN);
+  }
 }
 
 CAmount CMasternode::CollateralValue(int nHeight)
@@ -193,20 +200,26 @@ void CMasternode::Check(bool fForce)
     LogPrint(BCLog::MASTERNODE, "CMasternode::Check -- Masternode %s is in %s state\n", vin.prevout.ToStringShort(), GetStateString());
 
     //once spent, stop doing the checks
-    if(IsOutpointSpent()) return;
+    // JINY BEGIN
+    if(chainActive.Height() < 50000 && IsOutpointSpent()) return;
+    // JINY END
 
     int nHeight = 0;
     if(!fUnitTest) {
         TRY_LOCK(cs_main, lockMain);
         if(!lockMain) return;
-
+      // JINY BEGIN
+      if (chainActive.Height() < 50000) {
+      // JINY END
         CollateralStatus err = CheckCollateral(vin.prevout);
         if (err == COLLATERAL_UTXO_NOT_FOUND) {
             nActiveState = MASTERNODE_OUTPOINT_SPENT;
             LogPrint(BCLog::MASTERNODE, "CMasternode::Check -- Failed to find Masternode UTXO, masternode=%s\n", vin.prevout.ToStringShort());
             return;
         }
-
+      // JINY BEGIN
+      }
+      // JINY END
         nHeight = chainActive.Height();
     }
 

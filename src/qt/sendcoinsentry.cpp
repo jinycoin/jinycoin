@@ -14,6 +14,13 @@
 #include <QApplication>
 #include <QClipboard>
 
+// JINY BEGIN
+#include <key_io.h>
+#include <masternode.h>
+#include <netbase.h>
+#include <validation.h>
+// JINY END
+
 SendCoinsEntry::SendCoinsEntry(const PlatformStyle *_platformStyle, QWidget *parent) :
     QStackedWidget(parent),
     ui(new Ui::SendCoinsEntry),
@@ -41,11 +48,21 @@ SendCoinsEntry::SendCoinsEntry(const PlatformStyle *_platformStyle, QWidget *par
 
     // Connect signals
     connect(ui->payAmount, SIGNAL(valueChanged()), this, SIGNAL(payAmountChanged()));
+    // JINY BEGIN
+    connect(ui->payAmount, SIGNAL(valueChanged()), this, SLOT(collateralChanged()));
+    // JINY END
     connect(ui->checkboxSubtractFeeFromAmount, SIGNAL(toggled(bool)), this, SIGNAL(subtractFeeFromAmountChanged()));
+    // JINY BEGIN
+    connect(ui->checkboxSubtractFeeFromAmount, SIGNAL(toggled(bool)), this, SLOT(collateralChanged()));
+    connect(ui->checkboxStartMasternode, SIGNAL(toggled(bool)), this, SLOT(masternodeChanged()));
+    // JINY END
     connect(ui->deleteButton, SIGNAL(clicked()), this, SLOT(deleteClicked()));
     connect(ui->deleteButton_is, SIGNAL(clicked()), this, SLOT(deleteClicked()));
     connect(ui->deleteButton_s, SIGNAL(clicked()), this, SLOT(deleteClicked()));
     connect(ui->useAvailableBalanceButton, SIGNAL(clicked()), this, SLOT(useAvailableBalanceClicked()));
+    // JINY BEGIN
+    connect(ui->useAvailableBalanceButton, SIGNAL(clicked()), this, SLOT(collateralChanged()));
+    // JINY END
 }
 
 SendCoinsEntry::~SendCoinsEntry()
@@ -94,6 +111,16 @@ void SendCoinsEntry::clear()
     ui->addAsLabel->clear();
     ui->payAmount->clear();
     ui->checkboxSubtractFeeFromAmount->setCheckState(Qt::Unchecked);
+    // JINY BEGIN
+    ui->checkboxStartMasternode->setCheckState(Qt::Unchecked);
+    ui->checkboxStartMasternode->hide();
+    ui->labelMasternodeIP->hide();
+    ui->masternodeIP->clear();
+    ui->masternodeIP->hide();
+    ui->labelMasternodePayee->hide();
+    ui->masternodePayee->clear();
+    ui->masternodePayee->hide();
+    // JINY END
     ui->messageTextLabel->clear();
     ui->messageTextLabel->hide();
     ui->messageLabel->hide();
@@ -114,6 +141,42 @@ void SendCoinsEntry::checkSubtractFeeFromAmount()
 {
     ui->checkboxSubtractFeeFromAmount->setChecked(true);
 }
+
+// JINY BEGIN
+void SendCoinsEntry::collateralChanged()
+{
+    CMasternode cm;
+    if (!ui->checkboxSubtractFeeFromAmount->isChecked() && cm.CollateralValueCheck(chainActive.Tip()->nHeight+1, ui->payAmount->value()) && (chainActive.Tip()->nHeight+1) >= 50000)
+    {
+        ui->checkboxStartMasternode->show();
+    }
+    else
+    {
+        ui->checkboxStartMasternode->setChecked(false);
+        ui->checkboxStartMasternode->hide();
+    }
+}
+
+void SendCoinsEntry::masternodeChanged()
+{
+    if (ui->checkboxStartMasternode->isChecked())
+    {
+        ui->labelMasternodeIP->show();
+        ui->masternodeIP->show();
+        ui->labelMasternodePayee->show();
+        ui->masternodePayee->show();
+    }
+    else
+    {
+        ui->labelMasternodeIP->hide();
+        ui->masternodeIP->hide();
+        ui->masternodeIP->clear();
+        ui->labelMasternodePayee->hide();
+        ui->masternodePayee->hide();
+        ui->masternodePayee->clear();
+    }
+}
+// JINY END
 
 void SendCoinsEntry::deleteClicked()
 {
@@ -161,6 +224,48 @@ bool SendCoinsEntry::validate(interfaces::Node& node)
         retval = false;
     }
 
+    // JINY BEGIN
+    // Check masternode parameters
+    if (ui->checkboxStartMasternode->isChecked()) {
+        // Reject if don't have payTo address pubkey
+        if (retval) {
+            std::vector<std::shared_ptr<CWallet>> wallets = GetWallets();
+            CWallet* const pwallet = wallets[0].get();
+            CKey keyMN;
+            CKeyID keyIDMN = GetKeyForDestination(*pwallet, DecodeDestination(ui->payTo->text().toStdString()));
+            if (keyIDMN.IsNull()) retval = false;
+            else if (!pwallet->GetKey(keyIDMN, keyMN)) retval = false;
+            if (!retval) ui->payTo->setValid(false);
+        }
+
+        // Reject wrong or local IP address
+        if (retval) {
+            CService service(LookupNumeric(ui->masternodeIP->text().toStdString().c_str(), Params().GetDefaultPort()));
+            if (!CAddress(service, NODE_NETWORK).IsRoutable()) {
+                ui->masternodeIP->setValid(false);
+                retval = false;
+            }
+        }
+
+        // Reject invalid masternode payee address
+        if (retval && !model->validateAddress(ui->masternodePayee->text())) {
+            ui->masternodePayee->setValid(false);
+            retval = false;
+        }
+
+        // Reject if don't have masternode payee address pubkey
+        if (retval) {
+            std::vector<std::shared_ptr<CWallet>> wallets = GetWallets();
+            CWallet* const pwallet = wallets[0].get();
+            CKey keyMN;
+            CKeyID keyIDMN = GetKeyForDestination(*pwallet, DecodeDestination(ui->masternodePayee->text().toStdString()));
+            if (keyIDMN.IsNull()) retval = false;
+            else if (!pwallet->GetKey(keyIDMN, keyMN)) retval = false;
+            if (!retval) ui->masternodePayee->setValid(false);
+        }
+    }
+    // JINY END
+
     return retval;
 }
 
@@ -176,6 +281,10 @@ SendCoinsRecipient SendCoinsEntry::getValue()
     recipient.amount = ui->payAmount->value();
     recipient.message = ui->messageTextLabel->text();
     recipient.fSubtractFeeFromAmount = (ui->checkboxSubtractFeeFromAmount->checkState() == Qt::Checked);
+    // JINY BEGIN
+    recipient.masternodeIP = ui->masternodeIP->text();
+    recipient.masternodePayee = ui->masternodePayee->text();
+    // JINY END
 
     return recipient;
 }
@@ -186,7 +295,13 @@ QWidget *SendCoinsEntry::setupTabChain(QWidget *prev)
     QWidget::setTabOrder(ui->payTo, ui->addAsLabel);
     QWidget *w = ui->payAmount->setupTabChain(ui->addAsLabel);
     QWidget::setTabOrder(w, ui->checkboxSubtractFeeFromAmount);
-    QWidget::setTabOrder(ui->checkboxSubtractFeeFromAmount, ui->addressBookButton);
+    // JINY BEGIN
+    //QWidget::setTabOrder(ui->checkboxSubtractFeeFromAmount, ui->addressBookButton);
+    QWidget::setTabOrder(ui->checkboxSubtractFeeFromAmount, ui->checkboxStartMasternode);
+    QWidget::setTabOrder(ui->checkboxStartMasternode, ui->masternodeIP);
+    QWidget::setTabOrder(ui->masternodeIP, ui->masternodePayee);
+    QWidget::setTabOrder(ui->masternodePayee, ui->addressBookButton);
+    // JINY END
     QWidget::setTabOrder(ui->addressBookButton, ui->pasteButton);
     QWidget::setTabOrder(ui->pasteButton, ui->deleteButton);
     return ui->deleteButton;

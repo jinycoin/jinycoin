@@ -72,6 +72,9 @@ struct Params {
     int nMasternodePaymentsIncreasePeriod; // in blocks
     int nMasternodeCollateralMinimum; // in coins
     int nMasternodeCollateralMaximum; // in coins
+    // JINY BEGIN
+    int nMasternodeCollateralOnChain; // in coins
+    // JINY END
 
     int nInstantSendKeepLock; // in blocks
 

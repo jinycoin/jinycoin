@@ -736,6 +736,8 @@ static UniValue getblocktemplate(const JSONRPCRequest& request)
     UniValue masternodeObj(UniValue::VOBJ);
 
     CAmount blockReward = nFees + GetBlockSubsidy(pindexPrev->nHeight + 1, pindexPrev->GetBlockHeader(), consensusParams);
+  if (pindexPrev->nHeight + 1 < 50000) {
+  // Dash MN model
     CScript payee;
     CAmount moneysupply_toadd;
 
@@ -760,6 +762,27 @@ static UniValue getblocktemplate(const JSONRPCRequest& request)
                 masternodeArr.push_back(masternodeObj);
             }
         }
+  } else {
+  // Blockchain MN model
+    std::map<COutPoint, CMasternode> mapMasternodes = mnodeman.GetFullMasternodeMap();
+    std::map<COutPoint, CMasternode>::iterator mnit = mapMasternodes.begin();
+    while (mnit != mapMasternodes.end()) {
+        if (mnit->second.IsEnabled())
+        {
+            CScript payee = GetScriptForDestination(mnit->second.pubKeyCollateralAddress.GetID());
+            CTxDestination address1;
+            ExtractDestination(payee, address1);
+            std::string address2 = EncodeDestination(address1);
+            masternodeObj.pushKV("payee", address2);
+            masternodeObj.pushKV("script", mnit->second.vin.prevout.ToStringShort());
+            CAmount masternodePayment = GetMasternodePayment(pindexPrev->nHeight + 1, blockReward);
+            masternodeObj.pushKV("amount", masternodePayment);
+
+            masternodeArr.push_back(masternodeObj);
+        }
+        ++mnit;
+    }
+  }
     result.pushKV("masternode", masternodeArr);
     result.pushKV("masternode_payments_started", pindexPrev->nHeight + 1 > consensusParams.nMasternodePaymentsStartBlock);
     result.pushKV("masternode_payments_enforced", true);
